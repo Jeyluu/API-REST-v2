@@ -5,11 +5,46 @@ const exphbs = require("express-handlebars");
 const Handlebars = require("handlebars");
 const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-access')
 const overRide = require('method-override');
-
+const path = require("path");
+const sharp = require('sharp');//
 
 //upload image
 const multer = require('multer');
-var upload = multer({dest: 'uploads/'})
+const storage = multer.diskStorage({
+
+    destination: function(req,file,cb) {
+        cb(null, './public/uploads')
+
+    },
+
+    filename: function(req,file,cb) {
+        const date = Date.now();
+        cb(null, date + '_' + file.originalname)
+        //cb(null, file.originalname + '_' + Date.now() + path.extname(file.originalname))
+    }
+})
+const upload = multer({
+                    storage: storage,
+                    limits: {
+                        fileSize: 4 * 2048 * 2048,
+                        files: 1,
+                    },
+    //filtrage des type de photos (gif png jpg)
+                fileFilter : function (req, file, cb) {
+                        if(
+                            file.mimetype === 'image/png' ||
+                            file.mimetype === 'image/jpeg'||
+                            file.mimetype === 'image/jpg' ||
+                            file.mimetype === 'image/gif'
+                        ) {
+                            cb(null, true)
+                        } else 
+                        cb(new Error ('Le fichier doit être au format png, jpg, gif'))
+                    }
+                    
+})
+
+//const upload = multer({dest: 'uploads/'})
 
 //express
 const port = 1992;
@@ -39,33 +74,83 @@ mongoose.connect("mongodb://localhost:27017/boutiqueGames", {
     useCreateIndex: true
 })
 //création d'un schema pour la collection
-const productSchema = {
+const productSchema = new mongoose.Schema ({
     title: String,
     content: String,
     price: Number,
+    category: {
+            type: mongoose.Schema.Types.ObjectId, 
+            ref:"category"
+        },
     cover: { // pour ajouter l'image
         name: String,
         originalName: String,
         path: String,
+        urlSharp : String,
         createAt: Date // date de création
     }
-};
+});
+
+const categorySchema = new mongoose.Schema ({
+    title: String,
+})
 //Création d'un modèle
 const Product = mongoose.model("product", productSchema);
+const Category = mongoose.model("category", categorySchema);
 
 // Routes
+//Route fichier category
+
+app.route('/category')
+.get((req,res) => {
+    Category.find((err,category) => {
+        if(!err) {
+            res.render("category", {
+                categorie : category
+            })
+        } else {
+            res.send(err)
+        }
+    })
+})
+
+    
+
+
+.post((req,res) => {
+    const newCategory = new Category ({
+        title: req.body.title
+    })
+    newCategory.save(function(err) {
+    if (!err) {
+        res.send('La catégorie a été sauvegardé')
+    } else {
+        res.send(err)
+    }
+    })
+})
 //on renvoit la vue Index.hbs sur le serveur pour l'afficher dans le localhost:4000
 //pour afficher le mario bros la formule ci-dessous
 app.route('/')
 .get((req,res) => {
-    Product.find(function(err, produit) {
+    Product
+    .find()
+    .populate("category") //correpsond a category de la ligne 99
+    .exec(function(err, produit) {
     if(!err) {
-    res.render("index", {
-        product: produit
-    })
-    } else {
-    res.send(err)
-    }
+
+        Category.find(function (err, category) {
+        res.render("index", {
+                product: produit,
+                categorie : category
+            })
+
+        })
+
+    
+        } else {
+        res.send(err)
+        }
     })
 })
 
@@ -74,17 +159,26 @@ app.route('/')
     const file = req.file
     console.log(file)
     
+    sharp(file.path)
+    .resize(250)
+    .webp( { quality: 80})
+    .toFile('./public/uploads/web/' +file.originalname.split('.').slice(0, -1).join('.') + ".webp" , (err,info) => {});
+
+
     const newProduct = new Product({// permet d'afficher le contenu qui va être rentré sur internet
     title: req.body.title,
     content: req.body.content,
-    price: req.body.price
+    price: req.body.price,
+    category: req.body.category
     });
 
     if(file) {
         newProduct.cover = {
             name: file.filename,
             originalName: file.originalname,
-            path: file.path,
+            //path: "uploads/" + filename,
+            path: file.path.replace("public",""),
+            urlSharp : '/uploads/web/' + file.originalname.split('.').slice(0, -1).join('.') + ".webp" ,
             createAt: Date.now()
         }
     }
@@ -168,6 +262,8 @@ app.route("/:id")
         }
     )
 })
+
+
 
 
 app.listen(port, function() {

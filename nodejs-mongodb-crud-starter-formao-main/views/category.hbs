@@ -5,13 +5,10 @@
             <h1>GET</h1>
             <div class="card">
                 <div class="card-body">
+
                     <ul class="list-group list-group-flush">
-                        {{#each product}} <!-- Boucle -->
-                        <li class="list-group-item">{{this.title}}
-                        <h3>Source Sharp</h3>
-                        <p>{{this.category.title}}</p>
-                        <img src="{{this.cover.urlSharp}}" alt="" style="max-width: 100%;">
-                        </li>
+                        {{#each categorie}}<!-- Boucle -->
+                        <li class="list-group-item">{{this.title}}</li>
                         {{/each}}
                     </ul>
                 </div>
@@ -24,32 +21,10 @@
             <div class="card">
                 <div class="card-body">
 
-                    <form method="POST" action="/" enctype="multipart/form-data">
+                    <form method="POST" action="/category" >
                     <div class="form-group">
                         <label>Title</label>
                         <input class="form-control" type="text" name="title">
-                    </div>
-                    <div class="form-group">
-                        <label>Content</label>
-                        <input class="form-control" type="text" name="content">
-                    </div>
-                    <div class="form-group">
-                        <label>Price</label>
-                        <input class="form-control" type="text" name="price">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exampleFormControlSelect1">Category</label>
-                        <select name="category" class="form-control" id="exampleFormControlSelect1">
-                            {{#each categorie }}
-                            <option value="{{this.id}}">{{this.title}}</option>
-                            {{/each}}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Cover</label>
-                        <input class="form-control" type="file" name="cover">
                     </div>
                     <button type="submit" class="btn btn-primary">submit</button>
                     </form>
